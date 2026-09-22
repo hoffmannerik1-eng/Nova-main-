@@ -1,1 +1,1499 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NOVA AI</title>
 
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+:root{
+  --bg:#050607;
+  --panel:#0b0e11;
+  --panel2:#101419;
+  --line:#1c242b;
+  --text:#f5f7f8;
+  --muted:#7d8992;
+  --accent:#64ffad;
+  --accent2:#38a8ff;
+  --danger:#ff5364;
+}
+
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 50% 20%,#12241c 0%,transparent 32%),
+    radial-gradient(circle at 90% 90%,#101c2c 0%,transparent 30%),
+    var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,Arial,sans-serif;
+  overflow-x:hidden;
+}
+
+button,input{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+#app{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:260px 1fr;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+  border-right:1px solid var(--line);
+  background:rgba(7,9,11,.82);
+  backdrop-filter:blur(20px);
+  padding:22px;
+  display:flex;
+  flex-direction:column;
+  gap:25px;
+}
+
+.logo{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:800;
+  letter-spacing:4px;
+  font-size:21px;
+}
+
+.logoOrb{
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 35% 30%,white 0 3%,#64ffad 10%,#0c9b63 35%,#071b13 70%);
+  box-shadow:0 0 30px #3dff9a;
+}
+
+.status{
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:14px;
+  background:#090c0f;
+}
+
+.statusTop{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 12px var(--accent);
+}
+
+.sideButton{
+  width:100%;
+  border:1px solid var(--line);
+  background:#0b0f12;
+  color:#dbe2e6;
+  padding:12px;
+  border-radius:12px;
+  margin-top:8px;
+  text-align:left;
+}
+
+.sideButton:hover{
+  border-color:#345144;
+  background:#10161a;
+}
+
+.account{
+  margin-top:auto;
+  border-top:1px solid var(--line);
+  padding-top:15px;
+}
+
+.userName{
+  color:white;
+  font-size:14px;
+}
+
+.userEmail{
+  color:var(--muted);
+  font-size:11px;
+  margin-top:4px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.logout{
+  margin-top:12px;
+}
+
+/* MAIN */
+
+main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+}
+
+.topbar{
+  height:70px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+  background:rgba(5,7,8,.55);
+  backdrop-filter:blur(15px);
+}
+
+.mode{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.mode strong{
+  color:white;
+}
+
+.clock{
+  color:#7f8a91;
+  font-size:12px;
+}
+
+.workspace{
+  flex:1;
+  width:min(1100px,100%);
+  margin:auto;
+  padding:35px 25px 25px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ORB */
+
+.aiArea{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:430px;
+}
+
+.aiOrb{
+  width:190px;
+  height:190px;
+  border-radius:50%;
+  position:relative;
+  background:
+    radial-gradient(circle at 35% 30%,
+      #ffffff 0 1%,
+      #a7ffd1 4%,
+      #52ffa5 12%,
+      #15945e 30%,
+      #092c1d 53%,
+      #030706 70%);
+  box-shadow:
+    0 0 25px #36ff99,
+    0 0 80px rgba(54,255,153,.22),
+    inset 0 0 35px #67ffb0;
+  animation:float 4s ease-in-out infinite;
+}
+
+.aiOrb::before,
+.aiOrb::after{
+  content:"";
+  position:absolute;
+  inset:-22px;
+  border:1px solid rgba(100,255,173,.28);
+  border-radius:50%;
+  animation:spin 9s linear infinite;
+}
+
+.aiOrb::after{
+  inset:-42px;
+  border-color:rgba(56,168,255,.16);
+  animation-duration:14s;
+  animation-direction:reverse;
+}
+
+.aiOrb.listening{
+  animation:pulse 1s infinite;
+  box-shadow:
+    0 0 35px #64ffad,
+    0 0 130px rgba(100,255,173,.45);
+}
+
+.aiOrb.thinking{
+  animation:thinking .8s infinite alternate;
+}
+
+@keyframes float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-12px)}
+}
+
+@keyframes pulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.08)}
+}
+
+@keyframes thinking{
+  from{transform:scale(.95) rotate(0)}
+  to{transform:scale(1.06) rotate(8deg)}
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+.aiState{
+  margin-top:55px;
+  font-size:13px;
+  color:var(--muted);
+  letter-spacing:3px;
+  text-transform:uppercase;
+}
+
+.aiState.active{
+  color:var(--accent);
+}
+
+/* CHAT */
+
+.chat{
+  border:1px solid var(--line);
+  border-radius:20px;
+  overflow:hidden;
+  background:rgba(8,11,13,.8);
+}
+
+.messages{
+  max-height:320px;
+  overflow:auto;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.message{
+  max-width:80%;
+  padding:12px 15px;
+  border-radius:15px;
+  line-height:1.5;
+  font-size:14px;
+}
+
+.message.user{
+  align-self:flex-end;
+  background:#163426;
+  border:1px solid #285d43;
+}
+
+.message.ai{
+  align-self:flex-start;
+  background:#101419;
+  border:1px solid var(--line);
+}
+
+.message.system{
+  align-self:center;
+  color:var(--muted);
+  font-size:11px;
+}
+
+/* ACTION CARDS */
+
+.actionCard{
+  border:1px solid var(--line);
+  background:#0d1216;
+  border-radius:16px;
+  padding:16px;
+  margin-top:10px;
+}
+
+.actionTitle{
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.weatherTemp{
+  font-size:36px;
+  font-weight:800;
+}
+
+.weatherMeta{
+  color:var(--muted);
+  font-size:12px;
+}
+
+/* INPUT */
+
+.composer{
+  border-top:1px solid var(--line);
+  padding:14px;
+  display:flex;
+  gap:10px;
+}
+
+#textInput{
+  flex:1;
+  min-width:0;
+  background:#080b0d;
+  border:1px solid var(--line);
+  color:white;
+  border-radius:12px;
+  padding:13px 14px;
+  outline:none;
+}
+
+#textInput:focus{
+  border-color:#416f58;
+}
+
+.actionBtn{
+  width:46px;
+  height:46px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#10161a;
+  color:white;
+}
+
+.actionBtn:hover{
+  border-color:#476b58;
+}
+
+.voiceBtn{
+  width:56px;
+  background:var(--accent);
+  color:#04140b;
+  border:0;
+  font-size:19px;
+  font-weight:900;
+}
+
+.voiceBtn.active{
+  background:#ff596a;
+  color:white;
+  box-shadow:0 0 25px rgba(255,89,106,.35);
+}
+
+/* LOGIN */
+
+.login{
+  position:fixed;
+  inset:0;
+  background:#030405;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+}
+
+.loginBox{
+  width:min(420px,90%);
+  border:1px solid var(--line);
+  background:#090c0f;
+  border-radius:24px;
+  padding:32px;
+}
+
+.loginBox h1{
+  font-size:30px;
+  margin-bottom:8px;
+}
+
+.loginBox p{
+  color:var(--muted);
+  font-size:13px;
+  margin-bottom:25px;
+}
+
+.loginInput{
+  width:100%;
+  margin-top:10px;
+  padding:13px;
+  background:#050708;
+  border:1px solid var(--line);
+  border-radius:11px;
+  color:white;
+}
+
+.loginAction{
+  width:100%;
+  margin-top:12px;
+  padding:13px;
+  border:0;
+  border-radius:11px;
+  background:var(--accent);
+  color:#06130b;
+  font-weight:800;
+}
+
+.google{
+  background:#151a1e;
+  color:white;
+  border:1px solid var(--line);
+}
+
+.hidden{
+  display:none!important;
+}
+
+@media(max-width:800px){
+  #app{
+    grid-template-columns:1fr;
+  }
+
+  .sidebar{
+    display:none;
+  }
+
+  .workspace{
+    padding:20px 14px;
+  }
+
+  .aiArea{
+    min-height:360px;
+  }
+
+  .aiOrb{
+    width:145px;
+    height:145px;
+  }
+
+  .message{
+    max-width:90%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="login" class="login">
+  <div class="loginBox">
+    <div class="logo">
+      <div class="logoOrb"></div>
+      NOVA
+    </div>
+
+    <h1>Deine KI</h1>
+    <p>
+      Melde dich an, damit NOVA deine Einstellungen
+      und deinen Gesprächsverlauf speichern kann.
+    </p>
+
+    <input id="email"
+      class="loginInput"
+      type="email"
+      placeholder="E-Mail">
+
+    <input id="password"
+      class="loginInput"
+      type="password"
+      placeholder="Passwort">
+
+    <button id="loginBtn" class="loginAction">
+      ANMELDEN
+    </button>
+
+    <button id="registerBtn"
+      class="loginAction">
+      KONTO ERSTELLEN
+    </button>
+
+    <button id="googleBtn"
+      class="loginAction google">
+      MIT GOOGLE ANMELDEN
+    </button>
+
+    <p id="loginError"></p>
+  </div>
+</div>
+
+<div id="app">
+
+  <aside class="sidebar">
+
+    <div class="logo">
+      <div class="logoOrb"></div>
+      NOVA
+    </div>
+
+    <div class="status">
+      <div class="statusTop">
+        <span class="dot"></span>
+        SYSTEM ONLINE
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#aeb8be">
+        Gemini Voice Intelligence
+      </div>
+    </div>
+
+    <button class="sideButton" id="locationBtn">
+      📍 Standort freigeben
+    </button>
+
+    <button class="sideButton" id="clearBtn">
+      🗑 Gespräch löschen
+    </button>
+
+    <button class="sideButton" id="phoneInfoBtn">
+      📞 Telefon-NOVA
+    </button>
+
+    <div class="account">
+      <div class="userName" id="userName">Nicht angemeldet</div>
+      <div class="userEmail" id="userEmail"></div>
+      <button class="sideButton logout" id="logoutBtn">
+        Abmelden
+      </button>
+    </div>
+
+  </aside>
+
+  <main>
+
+    <header class="topbar">
+      <div class="mode">
+        MODUS:
+        <strong>VOICE INTELLIGENCE</strong>
+      </div>
+
+      <div class="clock" id="clock"></div>
+    </header>
+
+    <section class="workspace">
+
+      <div class="aiArea">
+
+        <div id="orb" class="aiOrb"></div>
+
+        <div id="state"
+          class="aiState">
+          BEREIT
+        </div>
+
+      </div>
+
+      <div class="chat">
+
+        <div id="messages"
+          class="messages">
+
+          <div class="message ai">
+            Hallo. Ich bin NOVA. Wie kann ich dir helfen?
+          </div>
+
+        </div>
+
+        <div class="composer">
+
+          <input
+            id="textInput"
+            autocomplete="off"
+            placeholder="Sag etwas zu NOVA …">
+
+          <button
+            id="sendBtn"
+            class="actionBtn">
+            ➤
+          </button>
+
+          <button
+            id="voiceBtn"
+            class="actionBtn voiceBtn">
+            🎙
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
+
+
+<script type="module">
+
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  limit,
+  getDocs,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+
+/* =====================================================
+   DEINE FIREBASE CONFIG
+   ===================================================== */
+
+const firebaseConfig = {
+
+  apiKey: "DEINE_FIREBASE_API_KEY",
+
+  authDomain:
+    "DEIN-PROJEKT.firebaseapp.com",
+
+  projectId:
+    "DEIN-PROJEKT",
+
+  storageBucket:
+    "DEIN-PROJEKT.firebasestorage.app",
+
+  messagingSenderId:
+    "DEINE_MESSAGING_ID",
+
+  appId:
+    "DEINE_APP_ID"
+
+};
+
+
+/* =====================================================
+   FIREBASE
+   ===================================================== */
+
+const firebaseApp =
+  initializeApp(firebaseConfig);
+
+const auth =
+  getAuth(firebaseApp);
+
+const db =
+  getFirestore(firebaseApp);
+
+
+/* =====================================================
+   ELEMENTE
+   ===================================================== */
+
+const login =
+  document.getElementById("login");
+
+const app =
+  document.getElementById("app");
+
+const email =
+  document.getElementById("email");
+
+const password =
+  document.getElementById("password");
+
+const loginError =
+  document.getElementById("loginError");
+
+const messages =
+  document.getElementById("messages");
+
+const textInput =
+  document.getElementById("textInput");
+
+const orb =
+  document.getElementById("orb");
+
+const state =
+  document.getElementById("state");
+
+const voiceBtn =
+  document.getElementById("voiceBtn");
+
+const userName =
+  document.getElementById("userName");
+
+const userEmail =
+  document.getElementById("userEmail");
+
+
+let currentUser = null;
+let recognition = null;
+let listening = false;
+let userLocation = null;
+
+
+/* =====================================================
+   AUTH
+   ===================================================== */
+
+onAuthStateChanged(auth, async user => {
+
+  if(user){
+
+    currentUser = user;
+
+    login.classList.add("hidden");
+    app.classList.remove("hidden");
+
+    userName.textContent =
+      user.displayName || "NOVA Benutzer";
+
+    userEmail.textContent =
+      user.email || "";
+
+    await loadHistory();
+
+  }else{
+
+    currentUser = null;
+
+    login.classList.remove("hidden");
+    app.classList.add("hidden");
+
+  }
+
+});
+
+
+/* =====================================================
+   LOGIN
+   ===================================================== */
+
+document.getElementById("loginBtn")
+.addEventListener("click", async () => {
+
+  try{
+
+    await signInWithEmailAndPassword(
+      auth,
+      email.value,
+      password.value
+    );
+
+  }catch(error){
+
+    loginError.textContent =
+      error.message;
+
+  }
+
+});
+
+
+/* =====================================================
+   REGISTER
+   ===================================================== */
+
+document.getElementById("registerBtn")
+.addEventListener("click", async () => {
+
+  try{
+
+    await createUserWithEmailAndPassword(
+      auth,
+      email.value,
+      password.value
+    );
+
+  }catch(error){
+
+    loginError.textContent =
+      error.message;
+
+  }
+
+});
+
+
+/* =====================================================
+   GOOGLE
+   ===================================================== */
+
+document.getElementById("googleBtn")
+.addEventListener("click", async () => {
+
+  try{
+
+    const provider =
+      new GoogleAuthProvider();
+
+    await signInWithPopup(
+      auth,
+      provider
+    );
+
+  }catch(error){
+
+    loginError.textContent =
+      error.message;
+
+  }
+
+});
+
+
+/* =====================================================
+   LOGOUT
+   ===================================================== */
+
+document.getElementById("logoutBtn")
+.addEventListener("click", () => {
+
+  signOut(auth);
+
+});
+
+
+/* =====================================================
+   CLOCK
+   ===================================================== */
+
+function updateClock(){
+
+  const now =
+    new Date();
+
+  document.getElementById("clock")
+    .textContent =
+      now.toLocaleString(
+        "de-DE",
+        {
+          dateStyle:"short",
+          timeStyle:"medium"
+        }
+      );
+
+}
+
+setInterval(updateClock,1000);
+
+updateClock();
+
+
+/* =====================================================
+   LOCATION
+   ===================================================== */
+
+document.getElementById("locationBtn")
+.addEventListener("click", () => {
+
+  if(!navigator.geolocation){
+
+    addMessage(
+      "ai",
+      "Dein Browser unterstützt keine Standortabfrage."
+    );
+
+    return;
+
+  }
+
+  navigator.geolocation.getCurrentPosition(
+
+    position => {
+
+      userLocation = {
+
+        latitude:
+          position.coords.latitude,
+
+        longitude:
+          position.coords.longitude
+
+      };
+
+      addMessage(
+        "system",
+        "Standort wurde für NOVA freigegeben."
+      );
+
+    },
+
+    () => {
+
+      addMessage(
+        "ai",
+        "Der Standort wurde nicht freigegeben."
+      );
+
+    },
+
+    {
+      enableHighAccuracy:true,
+      timeout:10000
+    }
+
+  );
+
+});
+
+
+/* =====================================================
+   SEND
+   ===================================================== */
+
+document.getElementById("sendBtn")
+.addEventListener("click", sendMessage);
+
+textInput.addEventListener(
+  "keydown",
+  e => {
+
+    if(e.key === "Enter"){
+
+      e.preventDefault();
+
+      sendMessage();
+
+    }
+
+  }
+);
+
+
+async function sendMessage(){
+
+  const text =
+    textInput.value.trim();
+
+  if(!text) return;
+
+  textInput.value = "";
+
+  addMessage("user",text);
+
+  setState(
+    "DENKEN",
+    "thinking"
+  );
+
+  try{
+
+    const response =
+      await fetch(
+        "https://DEIN-BACKEND.onrender.com/api/chat",
+        {
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json"
+          },
+
+          body:JSON.stringify({
+
+            text,
+
+            location:userLocation,
+
+            userId:
+              currentUser?.uid || null
+
+          })
+
+        }
+      );
+
+    if(!response.ok)
+      throw new Error(
+        "Backend nicht erreichbar."
+      );
+
+    const data =
+      await response.json();
+
+    addMessage(
+      "ai",
+      data.text || "Keine Antwort."
+    );
+
+    if(data.action){
+
+      renderAction(
+        data.action
+      );
+
+    }
+
+    speak(
+      data.text || ""
+    );
+
+  }catch(error){
+
+    addMessage(
+      "ai",
+      "Ich konnte den KI-Server gerade nicht erreichen."
+    );
+
+    console.error(error);
+
+  }
+
+  setState(
+    "BEREIT",
+    ""
+  );
+
+}
+
+
+/* =====================================================
+   VOICE INPUT
+   ===================================================== */
+
+const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+if(SpeechRecognition){
+
+  recognition =
+    new SpeechRecognition();
+
+  recognition.lang =
+    "de-DE";
+
+  recognition.continuous =
+    false;
+
+  recognition.interimResults =
+    false;
+
+  recognition.onstart = () => {
+
+    listening = true;
+
+    voiceBtn.classList.add("active");
+
+    setState(
+      "ZUHÖREN",
+      "listening"
+    );
+
+  };
+
+
+  recognition.onresult = event => {
+
+    const text =
+      event.results[0][0].transcript;
+
+    textInput.value =
+      text;
+
+    sendMessage();
+
+  };
+
+
+  recognition.onerror = () => {
+
+    listening = false;
+
+    voiceBtn.classList.remove("active");
+
+    setState(
+      "BEREIT",
+      ""
+    );
+
+  };
+
+
+  recognition.onend = () => {
+
+    listening = false;
+
+    voiceBtn.classList.remove("active");
+
+  };
+
+}else{
+
+  voiceBtn.disabled = true;
+
+}
+
+
+voiceBtn.addEventListener(
+  "click",
+  () => {
+
+    if(!recognition)
+      return;
+
+    if(listening){
+
+      recognition.stop();
+
+    }else{
+
+      recognition.start();
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   TEXT TO SPEECH
+   ===================================================== */
+
+function speak(text){
+
+  if(!("speechSynthesis" in window))
+    return;
+
+  speechSynthesis.cancel();
+
+  const utterance =
+    new SpeechSynthesisUtterance(
+      text
+    );
+
+  utterance.lang =
+    "de-DE";
+
+  utterance.rate =
+    0.96;
+
+  utterance.pitch =
+    0.95;
+
+  speechSynthesis.speak(
+    utterance
+  );
+
+}
+
+
+/* =====================================================
+   STATE
+   ===================================================== */
+
+function setState(
+  text,
+  css
+){
+
+  state.textContent =
+    text;
+
+  orb.className =
+    "aiOrb " + css;
+
+  if(css)
+    state.classList.add("active");
+  else
+    state.classList.remove("active");
+
+}
+
+
+/* =====================================================
+   MESSAGES
+   ===================================================== */
+
+function addMessage(
+  type,
+  text
+){
+
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "message " + type;
+
+  div.textContent =
+    text;
+
+  messages.appendChild(
+    div
+  );
+
+  messages.scrollTop =
+    messages.scrollHeight;
+
+}
+
+
+/* =====================================================
+   ACTIONS
+   ===================================================== */
+
+function renderAction(action){
+
+  if(action.type === "weather"){
+
+    const card =
+      document.createElement("div");
+
+    card.className =
+      "actionCard";
+
+    card.innerHTML = `
+
+      <div class="actionTitle">
+        🌤️ Wetter
+      </div>
+
+      <div class="weatherTemp">
+        ${escapeHtml(action.temperature || "--")}°
+      </div>
+
+      <div class="weatherMeta">
+        ${escapeHtml(action.description || "Wetterdaten")}
+      </div>
+
+      <div class="weatherMeta">
+        Standort:
+        ${escapeHtml(action.location || "Aktueller Standort")}
+      </div>
+
+    `;
+
+    messages.appendChild(card);
+
+  }
+
+
+  if(action.type === "map"){
+
+    const card =
+      document.createElement("div");
+
+    card.className =
+      "actionCard";
+
+    card.innerHTML = `
+
+      <div class="actionTitle">
+        📍 ${escapeHtml(action.name || "Ort")}
+      </div>
+
+      <div class="weatherMeta">
+        ${escapeHtml(action.description || "")}
+      </div>
+
+      <button
+        style="
+          margin-top:12px;
+          padding:10px 14px;
+          border-radius:10px;
+          border:1px solid #28343b;
+          background:#11171b;
+          color:white;
+        "
+        onclick="
+          window.open(
+            'https://www.google.com/maps/search/?api=1&query='
+            + encodeURIComponent('${escapeJs(action.name || "")}'),
+            '_blank'
+          )
+        "
+      >
+        Auf Karte öffnen
+      </button>
+
+    `;
+
+    messages.appendChild(card);
+
+  }
+
+}
+
+
+function escapeHtml(value){
+
+  return String(value)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+function escapeJs(value){
+
+  return String(value)
+    .replaceAll("\\","\\\\")
+    .replaceAll("'","\\'");
+
+}
+
+
+/* =====================================================
+   FIRESTORE HISTORY
+   ===================================================== */
+
+async function saveMessage(
+  role,
+  text
+){
+
+  if(!currentUser)
+    return;
+
+  try{
+
+    await addDoc(
+
+      collection(
+        db,
+        "users",
+        currentUser.uid,
+        "messages"
+      ),
+
+      {
+        role,
+        text,
+        createdAt:
+          serverTimestamp()
+      }
+
+    );
+
+  }catch(error){
+
+    console.error(
+      "Firestore:",
+      error
+    );
+
+  }
+
+}
+
+
+async function loadHistory(){
+
+  if(!currentUser)
+    return;
+
+  try{
+
+    const q =
+      query(
+
+        collection(
+          db,
+          "users",
+          currentUser.uid,
+          "messages"
+        ),
+
+        orderBy(
+          "createdAt",
+          "desc"
+        ),
+
+        limit(30)
+
+      );
+
+    const snapshot =
+      await getDocs(q);
+
+    const old =
+      [];
+
+    snapshot.forEach(
+      doc => old.push(doc.data())
+    );
+
+    old.reverse().forEach(
+      item => {
+
+        addMessage(
+          item.role === "user"
+            ? "user"
+            : "ai",
+          item.text
+        );
+
+      }
+    );
+
+  }catch(error){
+
+    console.log(
+      "Noch kein Verlauf."
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   CLEAR
+   ===================================================== */
+
+document.getElementById("clearBtn")
+.addEventListener("click", () => {
+
+  messages.innerHTML = "";
+
+  addMessage(
+    "ai",
+    "Gespräch zurückgesetzt."
+  );
+
+});
+
+
+/* =====================================================
+   PHONE INFO
+   ===================================================== */
+
+document.getElementById("phoneInfoBtn")
+.addEventListener("click", () => {
+
+  addMessage(
+    "ai",
+    "Telefon-NOVA wird über die konfigurierte Voice-Nummer bereitgestellt."
+  );
+
+});
+
+</script>
+
+</body>
+</html>
