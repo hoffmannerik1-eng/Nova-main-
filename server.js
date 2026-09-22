@@ -1,607 +1,298 @@
-require("dotenv").config();
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 
-const express = require("express");
-const cors = require("cors");
-const twilio = require("twilio");
+dotenv.config();
 
 const app = express();
 
-const {
-  VoiceResponse
-} = twilio.twiml;
+app.use(cors({
+    origin: true
+}));
 
-
-/* =====================================================
-   CONFIG
-   ===================================================== */
+app.use(express.json({
+    limit: "1mb"
+}));
 
 const PORT =
-  process.env.PORT || 3000;
+    process.env.PORT || 3000;
 
-const GEMINI_KEY =
-  process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY =
+    process.env.GEMINI_API_KEY;
 
 const GEMINI_MODEL =
-  process.env.GEMINI_MODEL ||
-  "gemini-2.5-flash";
+    process.env.GEMINI_MODEL ||
+    "gemini-2.5-flash";
 
 
-/* =====================================================
-   MIDDLEWARE
-   ===================================================== */
+const SYSTEM_PROMPT = `
+Du bist JARVIS.
 
-app.use(
-  cors({
-    origin:"*"
-  })
-);
+Du bist ein moderner persönlicher KI-Assistent.
 
-app.use(
-  express.json()
-);
+Antworte standardmäßig auf Deutsch,
+wenn der Nutzer Deutsch spricht.
 
-app.use(
-  express.urlencoded({
-    extended:true
-  })
-);
+Sei:
+- freundlich
+- ruhig
+- natürlich
+- intelligent
+- direkt
+- hilfreich
 
+Keine unnötig langen Antworten.
 
-/* =====================================================
-   BASIC
-   ===================================================== */
+Klinge wie ein fortschrittlicher persönlicher Assistent,
+aber behaupte niemals, ein echter Mensch zu sein.
 
-app.get(
-  "/",
-  (req,res) => {
-
-    res.json({
-      name:"NOVA AI",
-      status:"online"
-    });
-
-  }
-);
-
-
-/* =====================================================
-   GEMINI
-   ===================================================== */
-
-async function askGemini(
-  text,
-  location = null
-){
-
-  if(!GEMINI_KEY){
-
-    throw new Error(
-      "GEMINI_API_KEY fehlt."
-    );
-
-  }
-
-  let locationText =
-    "Kein Standort verfügbar.";
-
-  if(location){
-
-    locationText =
-      `Der Benutzer hat seinen Standort freigegeben.
-Breitengrad: ${location.latitude}
-Längengrad: ${location.longitude}`;
-
-  }
-
-
-  const systemPrompt = `
-
-Du bist NOVA, eine persönliche Sprach-KI.
-
-Du sprichst natürlich, freundlich,
-direkt und kurz.
-
-Du bist keine Kopie einer bekannten Film-KI.
-
-Wenn der Benutzer nach Wetter fragt,
-gib eine kurze Antwort und setze ACTION:
-WEATHER.
-
-Wenn der Benutzer nach einem Ort fragt,
-setze ACTION: MAP.
-
-Wenn keine besondere Aktion notwendig ist,
-setze ACTION: NONE.
-
-Standort:
-${locationText}
-
-Antworte immer in diesem Format:
-
-TEXT: deine Antwort
-
-ACTION: NONE
-
-oder:
-
-TEXT: deine Antwort
-
-ACTION: WEATHER
-
-oder:
-
-TEXT: deine Antwort
-
-ACTION: MAP
-
+Wenn du etwas nicht weißt,
+sag es ehrlich.
 `;
 
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(GEMINI_KEY)}`;
+function cleanHistory(history){
+
+    if(!Array.isArray(history))
+        return [];
 
 
-  const response =
-    await fetch(
-      url,
-      {
-        method:"POST",
+    return history
+        .slice(-18)
+        .filter(
+            item =>
+                item &&
+                (
+                    item.role === "user" ||
+                    item.role === "assistant"
+                ) &&
+                typeof item.text === "string"
+        )
+        .map(item => ({
 
-        headers:{
-          "Content-Type":
-            "application/json"
-        },
+            role:
+                item.role === "assistant"
+                    ? "model"
+                    : "user",
 
-        body:JSON.stringify({
-
-          systemInstruction:{
             parts:[
-              {
-                text:
-                  systemPrompt
-              }
-            ]
-          },
-
-          contents:[
-            {
-              role:"user",
-
-              parts:[
                 {
-                  text
+                    text:
+                        item.text.slice(0,8000)
                 }
-              ]
+            ]
+
+        }));
+
+}
+
+
+app.get(
+    "/health",
+    (req,res) => {
+
+        res.json({
+
+            ok:true,
+
+            service:"JARVIS",
+
+            model:
+                GEMINI_MODEL
+
+        });
+
+    }
+);
+
+
+app.post(
+    "/api/chat",
+    async (req,res) => {
+
+        try{
+
+            if(!GEMINI_API_KEY){
+
+                return res
+                    .status(500)
+                    .json({
+
+                        error:
+                            "GEMINI_API_KEY fehlt."
+
+                    });
+
             }
-          ],
 
-          generationConfig:{
-            temperature:0.7,
-            maxOutputTokens:300
-          }
 
-        })
+            const message =
+                String(
+                    req.body?.message || ""
+                ).trim();
 
-      }
-    );
 
+            if(!message){
 
-  if(!response.ok){
+                return res
+                    .status(400)
+                    .json({
 
-    const error =
-      await response.text();
+                        error:
+                            "Nachricht fehlt."
 
-    throw new Error(
-      "Gemini API: " +
-      error
-    );
+                    });
 
-  }
+            }
 
 
-  const data =
-    await response.json();
+            const history =
+                cleanHistory(
+                    req.body?.history
+                );
 
 
-  const raw =
-    data?.candidates?.[0]?.content?.parts
-      ?.map(part => part.text || "")
-      .join("")
-      .trim();
+            const contents = [
 
+                ...history,
 
-  if(!raw){
+                {
 
-    throw new Error(
-      "Gemini hat keine Antwort geliefert."
-    );
+                    role:"user",
 
-  }
+                    parts:[
+                        {
+                            text:message
+                        }
+                    ]
 
+                }
 
-  let action =
-    "NONE";
+            ];
 
-  if(
-    raw.toUpperCase()
-      .includes("ACTION: WEATHER")
-  ){
 
-    action =
-      "WEATHER";
+            const url =
+                `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
 
-  }
 
-  if(
-    raw.toUpperCase()
-      .includes("ACTION: MAP")
-  ){
+            const response =
+                await fetch(
+                    url,
+                    {
 
-    action =
-      "MAP";
+                        method:"POST",
 
-  }
+                        headers:{
 
+                            "Content-Type":
+                                "application/json",
 
-  const text =
-    raw
-      .replace(
-        /ACTION:\s*(WEATHER|MAP|NONE)/gi,
-        ""
-      )
-      .replace(
-        /^TEXT:\s*/i,
-        ""
-      )
-      .trim();
+                            "x-goog-api-key":
+                                GEMINI_API_KEY
 
+                        },
 
-  return {
-    text,
-    action
-  };
+                        body:
+                            JSON.stringify({
 
-}
+                                system_instruction:{
 
+                                    parts:[
+                                        {
+                                            text:
+                                                SYSTEM_PROMPT
+                                        }
+                                    ]
 
-/* =====================================================
-   WEB CHAT
-   ===================================================== */
+                                },
 
-app.post(
-  "/api/chat",
-  async (req,res) => {
+                                contents,
 
-    try{
+                                generationConfig:{
 
-      const {
-        text,
-        location
-      } = req.body;
+                                    maxOutputTokens:
+                                        900
 
+                                }
 
-      if(
-        typeof text !== "string" ||
-        !text.trim()
-      ){
+                            })
 
-        return res.status(400)
-          .json({
-            error:
-              "Text fehlt."
-          });
+                    }
+                );
 
-      }
 
+            const data =
+                await response.json();
 
-      const result =
-        await askGemini(
-          text.trim(),
-          location
-        );
 
+            if(!response.ok){
 
-      let action = null;
+                console.error(
+                    "Gemini Fehler:",
+                    data
+                );
 
 
-      if(
-        result.action ===
-        "WEATHER"
-      ){
+                return res
+                    .status(response.status)
+                    .json({
 
-        action = {
+                        error:
+                            data?.error?.message ||
+                            "Gemini API Fehler."
 
-          type:"weather",
+                    });
 
-          temperature:
-            "--",
+            }
 
-          description:
-            "Wetterfunktion kann mit einem Wetterdienst verbunden werden.",
 
-          location:
-            "Aktueller Standort"
+            const text =
+                data
+                ?.candidates?.[0]
+                ?.content?.parts
+                ?.map(
+                    part =>
+                        part.text || ""
+                )
+                .join("")
+                .trim();
 
-        };
 
-      }
+            res.json({
 
+                text:
+                    text ||
+                    "Ich konnte gerade keine Antwort erzeugen."
 
-      if(
-        result.action ===
-        "MAP"
-      ){
+            });
 
-        action = {
 
-          type:"map",
+        }catch(error){
 
-          name:
-            extractPlace(text),
+            console.error(error);
 
-          description:
-            "Ort auf der Karte öffnen."
+            res
+                .status(500)
+                .json({
 
-        };
+                    error:
+                        "Interner JARVIS-Serverfehler."
 
-      }
+                });
 
-
-      res.json({
-
-        text:
-          result.text,
-
-        action
-
-      });
-
-
-    }catch(error){
-
-      console.error(error);
-
-      res.status(500)
-        .json({
-
-          error:
-            "NOVA konnte die Anfrage nicht verarbeiten."
-
-        });
+        }
 
     }
-
-  }
 );
 
-
-/* =====================================================
-   PLACE EXTRACTION
-   ===================================================== */
-
-function extractPlace(text){
-
-  const lower =
-    text.toLowerCase();
-
-  const knownPlaces = [
-
-    ["eiffelturm","Eiffelturm"],
-    ["eiffel turm","Eiffelturm"],
-    ["berlin","Berlin"],
-    ["paris","Paris"],
-    ["rom","Rom"],
-    ["london","London"],
-    ["new york","New York"],
-    ["hamburg","Hamburg"],
-    ["münchen","München"],
-    ["frankfurt","Frankfurt"]
-
-  ];
-
-
-  for(
-    const [needle,name]
-    of knownPlaces
-  ){
-
-    if(
-      lower.includes(needle)
-    ){
-
-      return name;
-
-    }
-
-  }
-
-
-  return text;
-
-}
-
-
-/* =====================================================
-   TELEFON
-   ===================================================== */
-
-app.post(
-  "/voice",
-  async (req,res) => {
-
-    const twiml =
-      new VoiceResponse();
-
-
-    twiml.say(
-      {
-        language:"de-DE"
-      },
-      "Hallo. Ich bin NOVA. Wie kann ich dir helfen?"
-    );
-
-
-    twiml.gather({
-
-      input:"speech",
-
-      language:"de-DE",
-
-      speechTimeout:"auto",
-
-      action:
-        "/voice/process",
-
-      method:"POST"
-
-    });
-
-
-    res.type(
-      "text/xml"
-    );
-
-    res.send(
-      twiml.toString()
-    );
-
-  }
-);
-
-
-/* =====================================================
-   TELEFON SPRACHE VERARBEITEN
-   ===================================================== */
-
-app.post(
-  "/voice/process",
-  async (req,res) => {
-
-    const twiml =
-      new VoiceResponse();
-
-
-    const speech =
-      req.body.SpeechResult || "";
-
-
-    if(!speech){
-
-      twiml.say(
-        {
-          language:"de-DE"
-        },
-        "Ich habe dich leider nicht verstanden."
-      );
-
-      twiml.redirect(
-        "/voice"
-      );
-
-      return sendTwiml(
-        res,
-        twiml
-      );
-
-    }
-
-
-    try{
-
-      const result =
-        await askGemini(
-          speech,
-          null
-        );
-
-
-      twiml.say(
-        {
-          language:"de-DE"
-        },
-        result.text
-      );
-
-
-      const gather =
-        twiml.gather({
-
-          input:"speech",
-
-          language:"de-DE",
-
-          speechTimeout:"auto",
-
-          action:
-            "/voice/process",
-
-          method:"POST"
-
-        });
-
-
-      gather.say(
-        {
-          language:"de-DE"
-        },
-        "Ich höre."
-      );
-
-
-    }catch(error){
-
-      console.error(error);
-
-      twiml.say(
-        {
-          language:"de-DE"
-        },
-        "Es ist gerade ein technischer Fehler aufgetreten."
-      );
-
-    }
-
-
-    sendTwiml(
-      res,
-      twiml
-    );
-
-  }
-);
-
-
-/* =====================================================
-   TWIML RESPONSE
-   ===================================================== */
-
-function sendTwiml(
-  res,
-  twiml
-){
-
-  res.type(
-    "text/xml"
-  );
-
-  res.send(
-    twiml.toString()
-  );
-
-}
-
-
-/* =====================================================
-   START
-   ===================================================== */
 
 app.listen(
-  PORT,
-  () => {
+    PORT,
+    () => {
 
-    console.log(
-      `NOVA läuft auf Port ${PORT}`
-    );
+        console.log(
+            `JARVIS Server läuft auf Port ${PORT}`
+        );
 
-  }
+    }
 );
